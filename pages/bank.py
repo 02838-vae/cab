@@ -42,7 +42,7 @@ def clean_text(s: str) -> str:
     ]
     
     for pattern in standalone_patterns:
-        for match in re.finditer(pattern, temp_s):
+        for match in re.finditer(pattern, temp_s): # Đã sửa: finditer thành re.finditer (Fix NameError cũ)
             matched_text = match.group()
             placeholder = f"__PLACEHOLDER_{counter}__"
             placeholders[placeholder] = matched_text
@@ -512,8 +512,7 @@ def on_translate_toggle(key_clicked):
         # User turned this specific toggle OFF -> Clear the active key
         st.session_state.active_translation_key = None
     
-    # Force rerun để cập nhật tất cả các toggle khác (tắt chúng nếu cần)
-    st.rerun()
+    # Bỏ st.rerun() để tránh warning "Calling st.rerun() within a callback is a no-op."
 
 # ====================================================
 # 🌟 HÀM: XEM TOÀN BỘ CÂU HỎI (CẬP NHẬT CHỨC NĂNG DỊCH)
@@ -529,21 +528,17 @@ def display_all_questions(questions):
         translation_key = f"trans_{q_key}"
         is_active = (translation_key == st.session_state.active_translation_key)
         
-        # Tạo cột cho Câu hỏi và Nút Dịch
-        col_q_text, col_translate = st.columns([0.9, 0.1])
-        
-        with col_q_text:
-            st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
-        
-        with col_translate:
-            # Sử dụng st.toggle để giữ trạng thái dịch thay vì button/double click
-            st.toggle(
-                "Dịch", 
-                value=is_active, # Chỉ ON nếu key khớp với active key
-                key=f"toggle_{translation_key}",
-                on_change=on_translate_toggle,
-                args=(translation_key,)
-            )
+        # Hiển thị câu hỏi
+        st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
+
+        # Nút Dịch ở dưới
+        st.toggle(
+            "🌐 Dịch sang Tiếng Việt", 
+            value=is_active, 
+            key=f"toggle_{translation_key}",
+            on_change=on_translate_toggle,
+            args=(translation_key,)
+        )
 
         # Hiển thị Bản Dịch
         if is_active:
@@ -610,28 +605,22 @@ def display_test_mode(questions, bank_name, key_prefix="test"):
             translation_key = f"trans_{q_key}"
             is_active = (translation_key == st.session_state.active_translation_key)
             
-            # Tạo cột cho Câu hỏi và Nút Dịch
-            col_q_text, col_translate = st.columns([0.9, 0.1])
-            
-            with col_q_text:
-                st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
+            # Hiển thị câu hỏi
+            st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
 
-            with col_translate:
-                # Sử dụng st.toggle để giữ trạng thái dịch
-                st.toggle(
-                    "Dịch", 
-                    value=is_active, 
-                    key=f"toggle_{translation_key}",
-                    on_change=on_translate_toggle,
-                    args=(translation_key,)
-                )
+            # Nút Dịch ở dưới
+            st.toggle(
+                "🌐 Dịch sang Tiếng Việt", 
+                value=is_active, 
+                key=f"toggle_{translation_key}",
+                on_change=on_translate_toggle,
+                args=(translation_key,)
+            )
 
             # Hiển thị Bản Dịch
             if is_active:
-                # Check if translated content is already cached
                 translated_content = st.session_state.translations.get(translation_key)
                 
-                # If not cached or is not a string (default True/False state)
                 if not isinstance(translated_content, str):
                     full_text_to_translate = f"Câu hỏi: {q['question']}\nĐáp án: {'; '.join(q['options'])}"
                     st.session_state.translations[translation_key] = translate_text(full_text_to_translate)
@@ -642,7 +631,8 @@ def display_test_mode(questions, bank_name, key_prefix="test"):
             # Hiển thị Radio Button
             default_val = st.session_state.get(q_key, q["options"][0] if q["options"] else None)
             st.radio("", q["options"], index=q["options"].index(default_val) if default_val in q["options"] else 0, key=q_key)
-            st.markdown('<div class="question-separator"></div>', unsafe_allow_html=True) 
+            st.markdown('<div class="question-separator"></div>', unsafe_allow_html=True)
+            
         if st.button("✅ Nộp bài Test", key=f"{test_key_prefix}_submit_btn"):
             st.session_state[f"{test_key_prefix}_submitted"] = True
             st.rerun()
@@ -660,29 +650,22 @@ def display_test_mode(questions, bank_name, key_prefix="test"):
             translation_key = f"trans_{q_key}"
             is_active = (translation_key == st.session_state.active_translation_key)
 
+            # Hiển thị câu hỏi
+            st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
 
-            # Tạo cột cho Câu hỏi và Nút Dịch
-            col_q_text, col_translate = st.columns([0.9, 0.1])
-            
-            with col_q_text:
-                st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
-
-            with col_translate:
-                # Sử dụng st.toggle để giữ trạng thái dịch
-                st.toggle(
-                    "Dịch", 
-                    value=is_active, 
-                    key=f"toggle_{translation_key}",
-                    on_change=on_translate_toggle,
-                    args=(translation_key,)
-                )
+            # Nút Dịch ở dưới
+            st.toggle(
+                "🌐 Dịch sang Tiếng Việt", 
+                value=is_active, 
+                key=f"toggle_{translation_key}",
+                on_change=on_translate_toggle,
+                args=(translation_key,)
+            )
 
             # Hiển thị Bản Dịch
             if is_active:
-                # Check if translated content is already cached
                 translated_content = st.session_state.translations.get(translation_key)
                 
-                # If not cached or is not a string (default True/False state)
                 if not isinstance(translated_content, str):
                     full_text_to_translate = f"Câu hỏi: {q['question']}\nĐáp án: {'; '.join(q['options'])}"
                     st.session_state.translations[translation_key] = translate_text(full_text_to_translate)
@@ -690,22 +673,20 @@ def display_test_mode(questions, bank_name, key_prefix="test"):
 
                 st.info(translated_content, icon="🌐")
             
+            # Hiển thị Đáp án (KẾT QUẢ)
             for opt in q["options"]:
                 opt_clean = clean_text(opt)
                 if opt_clean == correct:
-                    # Đáp án đúng: Xanh lá (Bỏ shadow)
-                    color_style = "color:#00ff00;" 
+                    color_style = "color:#00ff00;"
                 elif opt_clean == clean_text(selected_opt):
-                    # Đáp án sai đã chọn: Đỏ (Bỏ shadow)
-                    color_style = "color:#ff3333;" 
+                    color_style = "color:#ff3333;"
                 else:
-                    # Đáp án thường: Trắng (Bỏ shadow)
                     color_style = "color:#FFFFFF;"
                 st.markdown(f'<div class="bank-answer-text" style="{color_style}">{opt}</div>', unsafe_allow_html=True)
 
             if is_correct: score += 1
             st.info(f"Đáp án đúng: **{q['answer']}**", icon="💡")
-            st.markdown('<div class="question-separator"></div>', unsafe_allow_html=True) 
+            st.markdown('<div class="question-separator"></div>', unsafe_allow_html=True)
         
         total_q = len(test_batch)
         pass_threshold = total_q * PASS_RATE
@@ -718,7 +699,6 @@ def display_test_mode(questions, bank_name, key_prefix="test"):
             st.error(f"😢 **KHÔNG ĐẠT (FAIL)**. Cần {math.ceil(pass_threshold)} câu đúng để Đạt.")
 
         if st.button("🔄 Làm lại Bài Test", key=f"{test_key_prefix}_restart_btn"):
-            # Cần lặp lại với index để xoá key chính xác
             for i, q in enumerate(test_batch, start=1):
                 st.session_state.pop(f"{test_key_prefix}_q_{i}_{hash(q['question'])}", None)
             st.session_state.pop(f"{test_key_prefix}_questions", None)
@@ -851,19 +831,12 @@ a#manual-home-btn:hover {{
     line-height: 1.5 !important;
 }}
 
-/* SỐ 1 */
+/* Số 1 */
 .number-one {{
     font-family: 'Oswald', sans-serif !important;
     font-size: 1em !important; 
     font-weight: 700;
     display: inline-block;
-}}
-
-@media (max-width: 768px) {{
-    #back-to-home-btn-container {{ top: 5px; left: 5px; }}
-    #main-title-container {{ height: 100px; padding-top: 10px; }}
-    #main-title-container h1 {{ font-size: 8vw; line-height: 1.5 !important; }}
-    .main > div:first-child {{ padding-top: 20px !important; }}
 }}
 
 .main > div:first-child {{
@@ -876,47 +849,50 @@ a#manual-home-btn:hover {{
     margin-bottom: 30px; text-align: center;
 }}
 #sub-static-title h2, .result-title h3 {{
-    font-family: 'Playfair Display', serif; /* Giữ nguyên font tiêu đề */
+    font-family: 'Playfair Display', serif;
     font-size: 2rem;
     color: #FFEA00;
     text-shadow: 0 0 15px #FFEA00;
 }}
-@media (max-width: 768px) {{
-    #sub-static-title h2, .result-title h3 {{
-        font-size: 4.8vw !important;
-        letter-spacing: -0.5px;
-        white-space: nowrap; 
-    }}
-}}
 
-/* STYLE CÂU HỎI & ĐÁP ÁN - ĐÃ THỐNG NHẤT FONT VÀ BỎ SHADOW/EFFECTS */
+/* STYLE CÂU HỎI - PC (NỀN ĐEN BAO VỪA CHỮ) */
 .bank-question-text {{
-    color: #FFDD00 !important; /* Giữ màu vàng cho câu hỏi */
-    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    font-weight: 900 !important;
     font-size: 22px !important; 
-    font-family: 'Oswald', sans-serif !important; /* Thống nhất font content */
-    text-shadow: none; /* ❌ BỎ SHADOW */
-    padding: 5px 15px; margin-bottom: 10px; line-height: 1.4 !important;
+    font-family: 'Oswald', sans-serif !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    padding: 8px 15px;
+    margin-bottom: 10px;
+    line-height: 1.4 !important;
+    background-color: rgba(0, 0, 0, 0.75);
+    border-radius: 8px;
+    display: inline-block; /* BAO VỪA CHỮ */
+    max-width: 100%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }}
 
+/* STYLE ĐÁP ÁN - PC (TRẮNG ĐẬM HƠN) */
 .bank-answer-text {{
-    font-family: 'Oswald', sans-serif !important; /* Thống nhất font content */
-    font-weight: 700 !important; 
+    font-family: 'Oswald', sans-serif !important;
+    font-weight: 900 !important;
     font-size: 22px !important; 
-    padding: 5px 15px; margin: 2px 0;
+    padding: 5px 15px;
+    margin: 2px 0;
     line-height: 1.5 !important; 
     display: block;
-    /* Màu sắc được xử lý bằng inline style */
+    color: #FFFFFF !important;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9); /* SHADOW ĐẬM HƠN */
 }}
 
-/* RADIO BUTTONS (CHỌN ĐÁP ÁN) - ĐÃ THỐNG NHẤT FONT VÀ BỎ SHADOW/EFFECTS */
+/* RADIO BUTTONS (CHỌN ĐÁP ÁN) */
 .stRadio label {{
     color: #FFFFFF !important;
     font-size: 22px !important; 
-    font-weight: 700 !important;
-    font-family: 'Oswald', sans-serif !important; /* Thống nhất font content */
+    font-weight: 900 !important; /* ĐẬM HƠN */
+    font-family: 'Oswald', sans-serif !important;
     padding: 2px 12px;
-    text-shadow: none !important; /* ❌ BỎ SHADOW */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important; /* SHADOW ĐẬM HƠN */
     background-color: transparent !important;
     border: none !important;
     display: block !important;
@@ -925,14 +901,14 @@ a#manual-home-btn:hover {{
 }}
 
 .stRadio label:hover {{
-    text-shadow: none !important; /* ❌ BỎ SHADOW KHI HOVER */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
 }}
 
 .stRadio label span, 
 .stRadio label p,
 .stRadio label div {{
     color: #FFFFFF !important;
-    text-shadow: none !important; /* ❌ BỎ SHADOW */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9) !important;
     letter-spacing: 0.5px !important;
 }}
 
@@ -940,16 +916,33 @@ div[data-testid="stMarkdownContainer"] p {{
     font-size: 22px !important; 
 }}
 
+/* STYLE NÚT ACTION (ĐẸP VÀ BÓNG BẨY) */
 .stButton>button {{
-    background-color: #b7a187 !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: #ffffff !important;
-    border-radius: 8px;
-    font-size: 1.1em !important;
-    font-weight: 600 !important;
+    border-radius: 12px !important;
+    font-size: 1.2em !important;
+    font-weight: 700 !important;
     font-family: 'Oswald', sans-serif !important; 
-    border: none !important;
-    padding: 10px 20px !important;
-    width: 100%; 
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    padding: 12px 24px !important;
+    width: 100% !important;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+    transition: all 0.3s ease !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+}}
+
+.stButton>button:hover {{
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+    box-shadow: 0 8px 25px rgba(118, 75, 162, 0.6) !important;
+    transform: translateY(-2px) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}}
+
+.stButton>button:active {{
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
 }}
 
 /* STYLE CHO NÚT DỊCH (st.toggle) */
@@ -969,8 +962,66 @@ div.stSelectbox label p {{
     font-size: 1.25rem !important;
     font-family: 'Oswald', sans-serif !important;
 }}
+
+/* STYLE CHO KHUNG DỊCH - ÁP DỤNG CHO CẢ PC & MOBILE */
+div[data-testid="stAlert"] {{
+    background-color: rgba(30, 30, 30, 0.95) !important;
+    border-left: 4px solid #00d4ff !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3) !important;
+}}
+
+div[data-testid="stAlert"] *,
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] strong,
+div[data-testid="stAlert"] em,
+div[data-testid="stAlert"] li,
+div[data-testid="stAlert"] span,
+div[data-testid="stAlert"] div {{
+    color: #FFFFFF !important;
+    font-size: 18px !important;
+    line-height: 1.6 !important;
+}}
+
+div[data-testid="stAlert"] strong {{
+    color: #FFD700 !important;
+    font-weight: 900 !important;
+}}
+
+/* MOBILE RESPONSIVE */
+@media (max-width: 768px) {{
+    #back-to-home-btn-container {{ top: 5px; left: 5px; }}
+    #main-title-container {{ height: 100px; padding-top: 10px; }}
+    #main-title-container h1 {{ font-size: 8vw; line-height: 1.5 !important; }}
+    .main > div:first-child {{ padding-top: 20px !important; }}
+    
+    /* Chỉnh kích thước tiêu đề trên mobile - FIX HIỂN THỊ ĐẦY ĐỦ */
+    #sub-static-title h2, 
+    .result-title h3 {{
+        font-size: 1.1rem !important; /* NHỎ HƠN ĐỂ VỪA 1 HÀNG */
+        white-space: normal !important; /* CHO PHÉP XUỐNG DÒNG */
+        overflow: visible !important;
+        text-overflow: clip !important;
+        padding: 0 10px !important;
+        line-height: 1.3 !important;
+    }}
+    
+    /* Màu vàng cho câu hỏi trên mobile */
+    .bank-question-text {{
+        color: #FFFF00 !important;
+        background-color: rgba(0, 0, 0, 0.75) !important;
+        display: inline-block !important; /* BAO VỪA CHỮ */
+    }}
+    
+    /* Nút trên mobile */
+    .stButton>button {{
+        font-size: 1em !important;
+        padding: 10px 18px !important;
+    }}
+}}
 </style>
 """
+
 st.markdown(css_style, unsafe_allow_html=True)
 
 # ====================================================
@@ -1071,8 +1122,8 @@ if bank_choice != "----":
     # --- MODE: GROUP ---
     if st.session_state.current_mode == "group":
         # Cập nhật tiêu đề nhóm câu hỏi
-        st.markdown('<div class="result-title" style="margin-top: 0px;"><h3>Luyện tập theo nhóm (20 câu/nhóm)</h3></div>', unsafe_allow_html=True)
-        group_size = 20 # Tăng lên 20 câu/nhóm
+        st.markdown('<div class="result-title" style="margin-top: 0px;"><h3>Luyện tập theo nhóm (30 câu/nhóm)</h3></div>', unsafe_allow_html=True)
+        group_size = 30 # Tăng lên 30 câu/nhóm
         if total > 0:
             groups = [f"Câu {i*group_size+1}-{min((i+1)*group_size, total)}" for i in range(math.ceil(total/group_size))]
             if st.session_state.current_group_idx >= len(groups): st.session_state.current_group_idx = 0
@@ -1118,20 +1169,17 @@ if bank_choice != "----":
                         translation_key = f"trans_{q_key}"
                         is_active = (translation_key == st.session_state.active_translation_key)
                         
-                        # Cập nhật: Thêm nút Dịch
-                        col_q_text, col_translate = st.columns([0.9, 0.1])
-                        with col_q_text:
-                            st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
-                        
-                        with col_translate:
-                            # Logic Dịch Độc Quyền
-                            st.toggle(
-                                "Dịch", 
-                                value=is_active, 
-                                key=f"toggle_{translation_key}",
-                                on_change=on_translate_toggle,
-                                args=(translation_key,)
-                            )
+                        # Hiển thị câu hỏi
+                        st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
+
+                        # Nút Dịch ở dưới
+                        st.toggle(
+                            "🌐 Dịch sang Tiếng Việt", 
+                            value=is_active, 
+                            key=f"toggle_{translation_key}",
+                            on_change=on_translate_toggle,
+                            args=(translation_key,)
+                        )
 
                         # Hiển thị Bản Dịch
                         if is_active:
@@ -1164,20 +1212,17 @@ if bank_choice != "----":
                         translation_key = f"trans_{q_key}"
                         is_active = (translation_key == st.session_state.active_translation_key)
 
-                        # Cập nhật: Thêm nút Dịch
-                        col_q_text, col_translate = st.columns([0.9, 0.1])
-                        with col_q_text:
-                            st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
-                        
-                        with col_translate:
-                            # Logic Dịch Độc Quyền
-                            st.toggle(
-                                "Dịch", 
-                                value=is_active, 
-                                key=f"toggle_{translation_key}",
-                                on_change=on_translate_toggle,
-                                args=(translation_key,)
-                            )
+                      # Hiển thị câu hỏi
+                        st.markdown(f'<div class="bank-question-text">{i}. {q["question"]}</div>', unsafe_allow_html=True)
+
+                        # Nút Dịch ở dưới
+                        st.toggle(
+                            "🌐 Dịch sang Tiếng Việt", 
+                            value=is_active, 
+                            key=f"toggle_{translation_key}",
+                            on_change=on_translate_toggle,
+                            args=(translation_key,)
+                        )
 
                         # Hiển thị Bản Dịch
                         if is_active:
