@@ -851,10 +851,11 @@ a#manual-home-btn:hover {{
 
 /* STYLE CÂU HỎI - PC (NỀN ĐEN BAO VỪA CHỮ) */
 .bank-question-text {{
-    color: #FFFFFF !important;
+    color: #FF8C00 !important;
     font-weight: 900 !important;
+    letter-spacing: 0.5px !important;
     font-size: 22px !important; 
-    font-family: 'Oswald', sans-serif !important;
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif !important;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     padding: 8px 15px;
     margin-bottom: 10px;
@@ -940,15 +941,52 @@ div[data-testid="stMarkdownContainer"] p {{
 }}
 
 /* STYLE CHO NÚT DỊCH (st.toggle) */
+div[data-testid="stCheckbox"] label p,
+div[data-testid="stCheckbox"] label span,
+div[data-testid="stCheckbox"] label div,
+div[data-testid="stCheckbox"] label,
+div[data-testid="stCheckbox"] p,
+div[data-testid="stCheckbox"] span,
+div[data-testid="stCheckbox"] div,
+.stCheckbox label p,
+.stCheckbox label span, 
+.stCheckbox label,
+.stCheckbox p,
+.stCheckbox span {{
+    color: #FFEA00 !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+}}
+
 .stToggle label p {{
-    font-size: 14px !important;
+    font-size: 20px !important;
     font-weight: 700 !important;
     padding: 0;
     margin: 0;
     line-height: 1 !important;
+    color: #FFEA00 !important;
+}}
+.stToggle label,
+.stToggle label span,
+.stToggle label div,
+.stToggle label > div[data-testid="stMarkdownContainer"],
+.stToggle label > div[data-testid="stMarkdownContainer"] p,
+.stToggle label > div[data-testid="stMarkdownContainer"] span,
+.stToggle label * {{
+    color: #FFEA00 !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
 }}
 .stToggle > label > div[data-testid="stMarkdownContainer"] {{
     margin-top: 10px !important; 
+}}
+
+/* Force màu vàng cho toggle text */
+[data-testid="stMarkdownContainer"] > p {{
+    color: inherit !important;
+}}
+.stToggle [data-testid="stMarkdownContainer"] > p {{
+    color: #FFEA00 !important;
 }}
 
 div.stSelectbox label p {{
