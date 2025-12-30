@@ -682,7 +682,113 @@ def parse_pl3_passage_bank(source):
         global_q_counter += 1
 
     return final_questions
+def parse_pl4_law_process(source):
+    path = find_file_path(source)
+    if not path: return []
+    
+    questions = []
+    current_group = None
+    group_content = ""
+    local_q_counter = 0 
+    group_name = "Paragraph 1"
+    
+    # Pattern nhận diện: Paragraph X, Số câu hỏi, và Đáp án (*)
+    paragraph_start_pat = re.compile(r'^\s*Paragraph\s*(\d+)\s*\.\s*', re.I)
+    q_start_pat = re.compile(r'^\s*(?P<q_num>\d+)\s*[\.\)]\s*', re.I)
+    opt_pat_single = re.compile(r'^\s*(?P<letter>[A-Da-d])[\.\)]\s*(?P<text>.*?)(\s*\(\*\))?$', re.I)
+    # Pattern nhận diện vị trí điền trống trong đoạn văn: (1), (2)...
+    blank_pattern = re.compile(r'\(\s*(\d+)\s*\)')
 
+    try:
+        doc = Document(path)
+    except Exception as e:
+        print(f"Lỗi: {e}")
+        return []
+
+    for paragraph in doc.paragraphs:
+        text = paragraph.text.strip()
+        if not text: continue
+        
+        is_new_paragraph_group = paragraph_start_pat.match(text)
+        match_q_start = q_start_pat.match(text)
+        
+        if is_new_paragraph_group:
+            if current_group and current_group.get('question'):
+                questions.append(current_group)
+            group_name = is_new_paragraph_group.group(0).strip()
+            current_group = None
+            group_content = ""
+            continue
+
+        if match_q_start:
+            if current_group and current_group.get('question'):
+                questions.append(current_group)
+            
+            q_num_str = match_q_start.group('q_num')
+            remaining_text = text[match_q_start.end():].strip()
+            
+            # KIỂM TRA: Nếu trong đoạn văn có ký hiệu (1), (2)... thì đây là câu hỏi điền trống
+            is_fill_blank = bool(blank_pattern.search(group_content))
+            
+            if is_fill_blank:
+                # Tạo câu hỏi miêu tả tự động
+                q_text = f"Chọn đáp án thích hợp cho vị trí trống ………… ({q_num_str}) trong đoạn văn trên."
+                first_opt_raw = remaining_text # Text còn lại sau số thứ tự chính là Option A
+            else:
+                q_text = remaining_text
+                first_opt_raw = ""
+
+            current_group = {
+                'group_name': group_name,
+                'paragraph_content': group_content.strip(),
+                'question': clean_text(q_text),
+                'options': {},
+                'correct_answer': "",
+                'number': int(q_num_str)
+            }
+
+            # Nếu là điền trống, xử lý Option A ngay tại dòng này
+            if is_fill_blank and first_opt_raw:
+                m_opt = opt_pat_single.match(first_opt_raw)
+                if m_opt:
+                    letter = m_opt.group('letter').upper()
+                    is_correct = m_opt.group(3) is not None
+                    opt_body = clean_text(m_opt.group('text').replace("(*)", "").strip())
+                    current_group['options'][letter] = f"{letter}. {opt_body}"
+                    if is_correct: current_group['correct_answer'] = letter
+            continue
+
+        if current_group:
+            match_opt = opt_pat_single.match(text)
+            if match_opt:
+                letter = match_opt.group('letter').upper()
+                is_correct = match_opt.group(3) is not None
+                opt_body = clean_text(match_opt.group('text').replace("(*)", "").strip())
+                current_group['options'][letter] = f"{letter}. {opt_body}"
+                if is_correct: current_group['correct_answer'] = letter
+            else:
+                # Nếu không phải option, nối tiếp vào câu hỏi (trường hợp câu hỏi dài nhiều dòng)
+                current_group['question'] += " " + clean_text(text)
+        else:
+            # Thu thập nội dung đoạn văn
+            group_content += text + "\n"
+
+    if current_group and current_group.get('question'):
+        questions.append(current_group)
+
+    # Chuyển đổi sang định dạng chuẩn để hiển thị
+    final_questions = []
+    for q in questions:
+        if not q.get('options'): continue
+        final_questions.append({
+            'question': q['question'],
+            'options': list(q['options'].values()),
+            'answer': q['options'].get(q['correct_answer'], list(q['options'].values())[0]),
+            'number': q['number'], 
+            'group': q['group_name'],
+            'paragraph_content': q['paragraph_content']
+        })
+    return final_questions
 # ====================================================
 # 🌟 HÀM: LOGIC DỊCH ĐỘC QUYỀN (EXCLUSIVE TRANSLATION)
 # ====================================================
@@ -700,8 +806,6 @@ def on_translate_toggle(key_clicked):
     if is_on_after_click:
         # User turned this specific toggle ON -> Make it the active key
         st.session_state.active_translation_key = key_clicked
-        # Tắt dịch đoạn văn (độc quyền)
-        st.session_state.active_passage_translation = None 
     elif st.session_state.active_translation_key == key_clicked:
         # User turned this specific toggle OFF -> Clear the active key
         st.session_state.active_translation_key = None
@@ -714,8 +818,6 @@ def on_passage_translate_toggle(passage_id_clicked):
     if is_on_after_click:
         # User turned this specific toggle ON -> Make it the active passage key
         st.session_state.active_passage_translation = passage_id_clicked
-        # Tắt dịch câu hỏi/đáp án (độc quyền)
-        st.session_state.active_translation_key = None 
     elif st.session_state.active_passage_translation == passage_id_clicked:
         # User turned this specific toggle OFF -> Clear the active key
         st.session_state.active_passage_translation = None
@@ -1559,7 +1661,7 @@ if bank_choice != "----":
     elif "Docwise" in bank_choice:
         is_docwise = True
         # Cập nhật nhãn Phụ lục 2 và BỔ SUNG PHỤ LỤC 3
-        doc_options = ["Phụ lục 1 : Ngữ pháp chung", "Phụ lục 2 : Từ vựng, thuật ngữ", "Phụ lục 3 : Bài đọc hiểu"]
+        doc_options = ["Phụ lục 1 : Ngữ pháp chung", "Phụ lục 2 : Từ vựng, thuật ngữ", "Phụ lục 3 : Bài đọc hiểu", "Phụ lục 4 : Luật và qui trình"]
         doc_selected_new = st.selectbox("Chọn Phụ lục:", doc_options, index=doc_options.index(st.session_state.get('doc_selected', doc_options[0])), key="docwise_selector")
         
         # Xử lý khi đổi phụ lục (reset mode)
@@ -1579,6 +1681,8 @@ if bank_choice != "----":
             source = "PL2.docx" # File PL2.docx (Dùng parse_pl2 đã sửa)
         elif st.session_state.doc_selected == "Phụ lục 3 : Bài đọc hiểu": 
             source = "PL3.docx" # File PL3.docx (Dùng parse_pl3_passage_bank mới)
+        elif st.session_state.doc_selected == "Phụ lục 4 : Luật và qui trình": 
+            source = "PL4.docx" # File Pl4.docx
         
     # LOAD CÂU HỎI
     questions = []
@@ -1594,6 +1698,8 @@ if bank_choice != "----":
                 questions = parse_pl2(source) # Sử dụng parser mới (dùng (*))
             elif source == "PL3.docx":
                 questions = parse_pl3_passage_bank(source) # <-- Dùng parser đã sửa cho PL3
+            elif source == "PL4.docx":
+                questions = parse_pl4_law_process(source)
     
     if not questions:
         # Cập nhật thông báo lỗi để phù hợp với logic (*) cho cả PL1 và PL2
@@ -1602,13 +1708,13 @@ if bank_choice != "----":
     
     total = len(questions)
 
-    # === LOGIC NHÓM CÂU HỎI THEO MODE (PL3 TÙY CHỈNH) - ĐÃ SỬA THEO YÊU CẦU MỚI ===
+   # === LOGIC NHÓM CÂU HỎI THEO MODE (PL3 & PL4 TÙY CHỈNH) - ĐÃ SỬA THEO YÊU CẦU MỚI ===
     group_size = 30 # Mặc định 30 câu/nhóm
-    custom_groups = [] # Chỉ dùng cho PL3
-    is_pl3_grouping = False
+    custom_groups = [] # Chỉ dùng cho PL3 & PL4
+    is_passage_grouping = False # Đổi tên từ is_pl3_grouping
 
-    if is_docwise and source == "PL3.docx":
-        is_pl3_grouping = True
+    if is_docwise and source in ["PL3.docx", "PL4.docx"]:
+        is_passage_grouping = True
         passage_groups = {}
         
         # Nhóm câu hỏi theo tên Paragraph
@@ -1651,7 +1757,7 @@ if bank_choice != "----":
                 base_group_label = f"Paragraph {p1_num}"
             
             # TẠO LABEL CUỐI CÙNG (CHỈ DÙNG TÊN PARAGRAPH)
-            final_group_label = base_group_label # <--- ĐÃ SỬA THEO YÊU CẦU CỦA USER
+            final_group_label = base_group_label
             
             if questions_in_pair:
                 # Dù có câu hỏi hay không, vẫn dùng base_group_label (ví dụ: "Paragraph 1 & 2")
@@ -1693,7 +1799,7 @@ if bank_choice != "----":
 
             idx = st.session_state.current_group_idx
             
-            if is_pl3_grouping:
+            if is_passage_grouping:
                 batch = custom_groups[idx]['questions']
                 start = 0 # Not relevant in this new grouping mode
             else:
