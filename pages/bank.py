@@ -791,7 +791,9 @@ def parse_pl4_law_process(source):
     return final_questions
 def parse_pl5_specialized(source):
     """
-    Parser cho định dạng PL5 (Câu hỏi 1, 2, 3... Đáp án A, B, C có dấu (*) ở cuối)
+    Parser cho định dạng PL5 (Chuyên ngành)
+    - Câu hỏi bắt đầu bằng số: 1., 2., 3., ...
+    - Đáp án A., B., C. với câu đúng có dấu (*) ở cuối
     """
     paras = read_docx_paragraphs(source)
     if not paras: return []
@@ -799,53 +801,56 @@ def parse_pl5_specialized(source):
     questions = []
     current = {"question": "", "options": [], "answer": ""}
     
-    # Regex nhận diện số thứ tự câu hỏi (142., 143...)
-    q_start_pat = re.compile(r'^\s*(?P<q_num>\d+)[\.\)]\s*') 
-    # Regex nhận diện đáp án (A. B. C.)
-    opt_prefix_pat = re.compile(r'^\s*(?P<letter>[A-Da-d])[\.\)]\s*') 
-
+    # Pattern nhận diện số thứ tự câu hỏi
+    q_start_pat = re.compile(r'^\s*(\d+)\s*[\.\)]\s*')
+    # Pattern nhận diện đáp án A, B, C (với hoặc không có dấu (*) ở cuối)
+    opt_pat = re.compile(r'^\s*([A-Ca-c])[\.\)]\s+(.+?)(\s*\(\*\)\s*)?$')
+    
     for p in paras:
         clean_p = clean_text(p)
         if not clean_p: continue
         
-        match_q = q_start_pat.match(clean_p)
-        match_opt = opt_prefix_pat.match(clean_p)
-        
-        if match_q:
-            # Lưu câu hỏi cũ trước khi sang câu mới
+        # Kiểm tra xem có phải câu hỏi mới không
+        q_match = q_start_pat.match(clean_p)
+        if q_match:
+            # Lưu câu hỏi cũ nếu có
             if current["question"] and current["options"]:
-                if not current["answer"]: current["answer"] = current["options"][0]
+                if not current["answer"] and current["options"]:
+                    current["answer"] = current["options"][0]
                 questions.append(current)
             
-            # Khởi tạo câu hỏi mới
-            q_body = clean_p[match_q.end():].strip()
-            current = {"question": q_body, "options": [], "answer": ""}
-            
-        elif match_opt:
-            is_correct = False
-            if "(*)" in clean_p:
-                is_correct = True
-                clean_p = clean_p.replace("(*)", "").strip()
-            
-            # Chuẩn hóa format: A. Nội dung
-            letter = match_opt.group('letter').upper()
-            opt_body = clean_p[match_opt.end():].strip()
-            full_opt = f"{letter}. {opt_body}"
-            
-            current["options"].append(full_opt)
-            if is_correct:
-                current["answer"] = full_opt
+            # Bắt đầu câu hỏi mới
+            q_text = q_start_pat.sub('', clean_p).strip()
+            current = {"question": q_text, "options": [], "answer": ""}
+            continue
         
+        # Kiểm tra xem có phải đáp án không
+        opt_match = opt_pat.match(clean_p)
+        if opt_match and current["question"]:
+            letter = opt_match.group(1).lower()
+            opt_text = opt_match.group(2).strip()
+            has_star = opt_match.group(3) is not None
+            
+            # Loại bỏ dấu (*) khỏi text nếu có
+            if has_star:
+                opt_text = opt_text.replace("(*)", "").strip()
+            
+            full_option = f"{letter}. {opt_text}"
+            current["options"].append(full_option)
+            
+            if has_star:
+                current["answer"] = full_option
         else:
-            # Nếu là dòng văn bản bình thường, nối vào nội dung câu hỏi
+            # Nếu không phải câu hỏi mới hoặc đáp án, nối vào câu hỏi hiện tại
             if current["question"]:
                 current["question"] += " " + clean_p
-
-    # Lưu câu cuối cùng
+    
+    # Lưu câu hỏi cuối cùng
     if current["question"] and current["options"]:
-        if not current["answer"]: current["answer"] = current["options"][0]
+        if not current["answer"] and current["options"]:
+            current["answer"] = current["options"][0]
         questions.append(current)
-        
+    
     return questions
 # ====================================================
 # 🌟 HÀM: LOGIC DỊCH ĐỘC QUYỀN (EXCLUSIVE TRANSLATION)
