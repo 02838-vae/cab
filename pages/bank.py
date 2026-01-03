@@ -789,6 +789,64 @@ def parse_pl4_law_process(source):
             'paragraph_content': q['paragraph_content']
         })
     return final_questions
+def parse_pl5_specialized(source):
+    """
+    Parser cho định dạng PL5 (Câu hỏi 1, 2, 3... Đáp án A, B, C có dấu (*) ở cuối)
+    """
+    paras = read_docx_paragraphs(source)
+    if not paras: return []
+
+    questions = []
+    current = {"question": "", "options": [], "answer": ""}
+    
+    # Regex nhận diện số thứ tự câu hỏi (142., 143...)
+    q_start_pat = re.compile(r'^\s*(?P<q_num>\d+)[\.\)]\s*') 
+    # Regex nhận diện đáp án (A. B. C.)
+    opt_prefix_pat = re.compile(r'^\s*(?P<letter>[A-Da-d])[\.\)]\s*') 
+
+    for p in paras:
+        clean_p = clean_text(p)
+        if not clean_p: continue
+        
+        match_q = q_start_pat.match(clean_p)
+        match_opt = opt_prefix_pat.match(clean_p)
+        
+        if match_q:
+            # Lưu câu hỏi cũ trước khi sang câu mới
+            if current["question"] and current["options"]:
+                if not current["answer"]: current["answer"] = current["options"][0]
+                questions.append(current)
+            
+            # Khởi tạo câu hỏi mới
+            q_body = clean_p[match_q.end():].strip()
+            current = {"question": q_body, "options": [], "answer": ""}
+            
+        elif match_opt:
+            is_correct = False
+            if "(*)" in clean_p:
+                is_correct = True
+                clean_p = clean_p.replace("(*)", "").strip()
+            
+            # Chuẩn hóa format: A. Nội dung
+            letter = match_opt.group('letter').upper()
+            opt_body = clean_p[match_opt.end():].strip()
+            full_opt = f"{letter}. {opt_body}"
+            
+            current["options"].append(full_opt)
+            if is_correct:
+                current["answer"] = full_opt
+        
+        else:
+            # Nếu là dòng văn bản bình thường, nối vào nội dung câu hỏi
+            if current["question"]:
+                current["question"] += " " + clean_p
+
+    # Lưu câu cuối cùng
+    if current["question"] and current["options"]:
+        if not current["answer"]: current["answer"] = current["options"][0]
+        questions.append(current)
+        
+    return questions
 # ====================================================
 # 🌟 HÀM: LOGIC DỊCH ĐỘC QUYỀN (EXCLUSIVE TRANSLATION)
 # ====================================================
@@ -1661,7 +1719,7 @@ if bank_choice != "----":
     elif "Docwise" in bank_choice:
         is_docwise = True
         # Cập nhật nhãn Phụ lục 2 và BỔ SUNG PHỤ LỤC 3
-        doc_options = ["Phụ lục 1 : Ngữ pháp chung", "Phụ lục 2 : Từ vựng, thuật ngữ", "Phụ lục 3 : Bài đọc hiểu", "Phụ lục 4 : Luật và qui trình"]
+        doc_options = ["Phụ lục 1 : Ngữ pháp chung", "Phụ lục 2 : Từ vựng, thuật ngữ", "Phụ lục 3 : Bài đọc hiểu", "Phụ lục 4 : Luật và qui trình", "Phụ lục 5 : Chuyên ngành"]
         doc_selected_new = st.selectbox("Chọn Phụ lục:", doc_options, index=doc_options.index(st.session_state.get('doc_selected', doc_options[0])), key="docwise_selector")
         
         # Xử lý khi đổi phụ lục (reset mode)
@@ -1683,6 +1741,8 @@ if bank_choice != "----":
             source = "PL3.docx" # File PL3.docx (Dùng parse_pl3_passage_bank mới)
         elif st.session_state.doc_selected == "Phụ lục 4 : Luật và qui trình": 
             source = "PL4.docx" # File Pl4.docx
+        elif st.session_state.doc_selected == "Phụ lục 5 : Chuyên ngành": 
+            source = "PL5.docx" # File Pl4.docx
         
     # LOAD CÂU HỎI
     questions = []
@@ -1700,6 +1760,8 @@ if bank_choice != "----":
                 questions = parse_pl3_passage_bank(source) # <-- Dùng parser đã sửa cho PL3
             elif source == "PL4.docx":
                 questions = parse_pl4_law_process(source)
+            elif source == "PL5.docx":
+                questions = parse_pl5_specialized(source)
     
     if not questions:
         # Cập nhật thông báo lỗi để phù hợp với logic (*) cho cả PL1 và PL2
